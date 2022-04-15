@@ -4,7 +4,7 @@ import signal, time, os
 global t0 # Starting time
 T = []    # List of time steps
 
-freq = 100 # Hz
+freq = 1000 # Hz
 dt = 1.0/freq
 tSleep = 0.005/freq
 
@@ -40,6 +40,7 @@ while Running:
     time.sleep(tSleep)
 
 # Stopped: print average dt and freq
+signal.setitimer(signal.ITIMER_REAL, 0)
 time.sleep(1)
 import numpy as np
 T = np.array(T)
@@ -48,4 +49,4 @@ T = np.diff(T)
 ta = T.mean()
 fa = 1/ta
 
-print("\nAverage dt: {:.8f} | Average freq: {:4.6f}".format(ta, fa))
+print("\nAverage dt: {:.6f} | Average freq: {:4.4f}".format(ta, fa))
