@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import signal, time, os
+import odrive
+from odrive.enums import *
 
 global t0 # Starting time
 T = []    # List of time steps
@@ -20,12 +22,23 @@ def intHandler(sig, f):
 
 # Handle SIGALRM signals: restart the timer and perform loop activities
 def timeoutHandler(sig, f):
+    # Reset timer
     global dt
-    signal.setitimer(signal.ITIMER_REAL, dt)
+    signal.setitimer(signal.ITIMER_REAL, dt)    
+    # Measure time
     global t0
     T.append(time.time()-t0)
+    # Do task(s)
+    enc = odrv0.axis0.encoder.shadow_count      # Read encoder
+    pos = odrv0.axis0.controller.pos_setpoint   # Get position set point
+    odrv0.axis0.controller.input_pos = 0
 
 print(" [INFO]    Running at {} Hz. Stop with ^C".format(freq))
+odrv0 = odrive.find_any()
+print("Connected to ODrive {}".format(odrv0.serial_number))
+
+odrv0.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+odrv0.axis0.controller.input_pos = 0
 
 # Attach intHandler to SIGINT signal
 signal.signal(signal.SIGINT, intHandler)
@@ -39,7 +52,9 @@ Running = True
 while Running:
     time.sleep(tSleep)
 
-# Stopped: print average dt and freq
+# Stop ODrive
+odrv0.axis0.requested_state = AXIS_STATE_IDLE
+
 time.sleep(1)
 import numpy as np
 T = np.array(T)
