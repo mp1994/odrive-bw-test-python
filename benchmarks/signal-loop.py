@@ -6,9 +6,9 @@ T = []    # List of time steps
 
 freq = int(sys.argv[1])  # Hz
 if freq is None:
-    freq = 100 # Hz
+    freq = 1000 # Hz
 dt = 1.0/freq
-tSleep = 0.005/freq
+tSleep = 0.25e-6
 N = 60*freq
 
 fifo = False
@@ -31,13 +31,23 @@ def timeoutHandler(sig, f):
     global dt
     signal.setitimer(signal.ITIMER_REAL, dt)
     global t0
-    T.append(time.time()-t0)
+    global fr, fw, data
+    data[0] = 0x01; data[10] = 0x0A;
+    fw.write(data.decode())
+    # rx = fr.readline()
+    # print(rx[0])
+    T.append(time.perf_counter()-t0)
     global N
     if len(T) == N:
         global Running
         Running = False
 
 print(" [INFO]    Running at {} Hz for {} s. Stop early with ^C".format(freq, N/freq))
+
+# Open file > simulate serial communication
+fw = open("foo.txt", 'a')
+fr = open("foo.txt", 'r')
+data = bytearray(100)
 
 # Attach intHandler to SIGINT signal
 signal.signal(signal.SIGINT, intHandler)
@@ -46,7 +56,7 @@ signal.signal(signal.SIGALRM, timeoutHandler)
 # Start the timer for the first time
 signal.setitimer(signal.ITIMER_REAL, dt)
 
-t0 = time.time()
+t0 = time.perf_counter()
 Running = True
 while Running:
     time.sleep(tSleep)
@@ -60,6 +70,9 @@ import matplotlib.pyplot as plt
 
 T = np.array(T)
 T = np.diff(T)
+print(len(T))
+T = np.delete(T, np.where(T>10*dt))
+print(len(T))
 
 ta = T.mean()
 fa = 1/ta
@@ -75,6 +88,10 @@ ax = plt.gca()
 plt.text(0.5, 0.85, "Average frequency: {:4.4f} Hz".format(fa), fontsize=10, transform=ax.transAxes)
 plt.vlines(1000/freq, 0, np.floor(ax.get_ylim()[-1]), colors='#808080', linestyles='dashed')
 plt.show()
+
+fw.close()
+fr.close()
+
 
 if fifo:
     np.save("T_signal_fifo", T)
